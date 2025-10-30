@@ -5,6 +5,7 @@
 	.equiv NUM_TRACKS_SE3, 1
 
     .bss
+    .align 2
 
 	.section .rodata
 
