@@ -57,7 +57,7 @@ u16 ProgramFlashByte_DUMMY(u16 sectorNum, u32 offset, u8 data)
 }
 
 
-u16 ProgramFlashSector_DUMMY(u16 sectorNum, void *src)
+u16 ProgramFlashSector_DUMMY(u16 sectorNum, u8 *src)
 {
     memcpy(&FLASH_BASE[sectorNum << gFlash->sector.shift], src, 0x1000);
     return 0;

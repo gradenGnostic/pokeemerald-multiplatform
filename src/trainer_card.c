@@ -18,6 +18,7 @@
 #include "strings.h"
 #include "string_util.h"
 #include "trainer_card.h"
+#include "menu_helpers.h"
 #include "gpu_regs.h"
 #include "international_string_util.h"
 #include "pokedex.h"

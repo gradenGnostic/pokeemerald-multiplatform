@@ -420,7 +420,6 @@ void PrintAgbTrack(std::vector<Event>& events)
     //std::fprintf(g_outputFile, "\n@**************** Track %u (Midi-Chn.%u) ****************@\n\n", g_agbTrack, g_midiChan + 1);
     std::fprintf(g_outputFile, "%s_%u:\n", g_asmLabel.c_str(), g_agbTrack);
 
-    int wholeNoteCount = 0;
     int loopEndBlockNum = 0;
 
     ResetTrackVars();
@@ -457,7 +456,7 @@ void PrintAgbTrack(std::vector<Event>& events)
         }
 
         if (event.type == EventType::WholeNoteMark || event.type == EventType::Pattern)
-            wholeNoteCount++; //std::fprintf(g_outputFile, "@ %03d   ----------------------------------------\n", wholeNoteCount++);
+            ; //std::fprintf(g_outputFile, "@ %03d   ----------------------------------------\n");
 
         switch (event.type)
         {

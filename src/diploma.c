@@ -64,7 +64,7 @@ void CB2_ShowDiploma(void)
     SetGpuReg(REG_OFFSET_BG0HOFS, 0);
     SetGpuReg(REG_OFFSET_BG0VOFS, 0);
     // why doesn't this one use the dma manager either?
-    DmaFill16(3, 0, VRAM, VRAM_SIZE);
+    DmaFill16(3, 0, (void *)(uintptr_t)VRAM, VRAM_SIZE);
     DmaFill32(3, 0, OAM, OAM_SIZE);
     DmaFill16(3, 0, PLTT, PLTT_SIZE);
     ScanlineEffect_Stop();

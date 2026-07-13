@@ -1,0 +1,4 @@
+[submodule "android/SDL2"]
+	path = android/SDL2
+	url = https://github.com/libsdl-org/SDL.git
+	branch = release-2.30.7

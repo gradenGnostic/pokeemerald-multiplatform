@@ -18,7 +18,7 @@ void GeneratePokemonSampleAudio(struct SoundMixerState *mixer, struct MixerSourc
 static s8 sub_82DF758(struct MixerSource *chan, u32 current);
 
 void RunMixerFrame(void) {
-    struct SoundMixerState *mixer = SOUND_INFO_PTR;
+    struct SoundMixerState *mixer = (struct SoundMixerState *)SOUND_INFO_PTR;
     
     if (mixer->lockStatus != MIXER_UNLOCKED) {
         return;
@@ -94,7 +94,7 @@ void SampleMixer(struct SoundMixerState *mixer, u32 scanlineLimit, u16 samplesPe
     struct MixerSource *chan = mixer->chans;
     
     for (int i = 0; i < numChans; i++, chan++) {
-        struct WaveData2 *wav = chan->wav;
+        struct WaveData2 *wav = (struct WaveData2 *)chan->wav;
         
         if (scanlineLimit != 0) {
             uf16 vcount = REG_VCOUNT;
@@ -393,7 +393,7 @@ void GeneratePokemonSampleAudio(struct SoundMixerState *mixer, struct MixerSourc
                     samplesLeftInWav -= newCoarsePos;
                     if (samplesLeftInWav <= 0) {
                         if (loopLen != 0) {
-                            current = chan->wav->loopStart;
+                            current = wav->data + wav->loopStart;
                             newCoarsePos = -samplesLeftInWav;
                             samplesLeftInWav += loopLen;
                             while (samplesLeftInWav <= 0) {

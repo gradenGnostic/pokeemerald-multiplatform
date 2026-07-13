@@ -393,7 +393,7 @@ void CB2_ChooseStarter(void)
     ChangeBgX(3, 0, BG_COORD_SET);
     ChangeBgY(3, 0, BG_COORD_SET);
 
-    DmaFill16(3, 0, VRAM, VRAM_SIZE);
+    DmaFill16(3, 0, (void *)(uintptr_t)VRAM, VRAM_SIZE);
     DmaFill32(3, 0, OAM, OAM_SIZE);
     DmaFill16(3, 0, PLTT, PLTT_SIZE);
 

@@ -418,7 +418,7 @@ extern char gMaxLines[];
 u32 umul3232H32(u32 multiplier, u32 multiplicand);
 void SoundMain(void);
 void SoundMainBTM(void *ptr);
-void TrackStop(struct MP2KPlayerState *player, struct MP2KTrack *track);
+void TrackStop(struct MusicPlayerInfo *player, struct MusicPlayerTrack *track);
 void MPlayMain(struct MusicPlayerInfo *);
 void MP2KClearChain(struct MixerSource *chan);
 
@@ -439,7 +439,7 @@ void CgbOscOff(u8);
 void CgbModVol(struct CgbChannel *chan);
 u32 MidiKeyToCgbFreq(u8, u8, u8);
 void DummyFunc(void);
-void MPlayJumpTableCopy(void **mplayJumpTable);
+void MPlayJumpTableCopy(MPlayFunc *mplayJumpTable);
 void SampleFreqSet(u32 freq);
 void m4aSoundVSyncOn(void);
 void m4aSoundVSyncOff(void);

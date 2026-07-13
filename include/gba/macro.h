@@ -5,7 +5,7 @@
 {                                                                                 \
     vu##bit tmp = (vu##bit)(value);                                               \
     CpuSet((void *)&tmp,                                                          \
-           dest,                                                                  \
+           (void *)(uintptr_t)(dest),                                             \
            CPU_SET_##bit##BIT | CPU_SET_SRC_FIXED | ((size)/(bit/8) & 0x1FFFFF)); \
 }
 
@@ -87,7 +87,7 @@ extern void DmaSet(int dmaNum, const void * src, void * dest, u32 control);
     vu##bit tmp = (vu##bit)(value);                                                           \
     DmaSet(dmaNum,                                                                            \
            &tmp,                                                                              \
-           dest,                                                                              \
+           (void *)(uintptr_t)(dest),                                                          \
            (DMA_ENABLE | DMA_START_NOW | DMA_##bit##BIT | DMA_SRC_FIXED | DMA_DEST_INC) << 16 \
          | ((size)/(bit/8)));                                                                 \
 }
@@ -118,7 +118,7 @@ extern void DmaSet(int dmaNum, const void * src, void * dest, u32 control);
 
 #define DMA_CLEAR_UNCHECKED(dmaNum, dest, size, bit) \
 {                                           \
-    vu##bit *_dest = (vu##bit *)(dest);     \
+    vu##bit *_dest = (vu##bit *)(uintptr_t)(dest);     \
     u32 _size = size;                       \
     DmaFill##bit(dmaNum, 0, _dest, _size);  \
 }
@@ -140,7 +140,7 @@ extern void DmaSet(int dmaNum, const void * src, void * dest, u32 control);
 #define DMA_COPY_UNCHECKED(dmaNum, src, dest, size, bit)                                    \
     DmaSet(dmaNum,                                                                          \
            src,                                                                             \
-           dest,                                                                            \
+           (void *)(uintptr_t)(dest),                                                        \
            (DMA_ENABLE | DMA_START_NOW | DMA_##bit##BIT | DMA_SRC_INC | DMA_DEST_INC) << 16 \
          | ((size)/(bit/8)))
 
@@ -166,8 +166,8 @@ extern void DmaSet(int dmaNum, const void * src, void * dest, u32 control);
 
 #define DmaCopyLarge(dmaNum, src, dest, size, block, bit) \
 {                                                         \
-    const void *_src = src;                               \
-    void *_dest = dest;                                   \
+    const void *_src = (const void *)(uintptr_t)(src);    \
+    void *_dest = (void *)(uintptr_t)(dest);              \
     u32 _size = size;                                     \
     while (1)                                             \
     {                                                     \
@@ -189,7 +189,7 @@ extern void DmaSet(int dmaNum, const void * src, void * dest, u32 control);
 
 #define DmaFillLarge(dmaNum, value, dest, size, block, bit) \
 {                                                           \
-    void *_dest = dest;                                     \
+    void *_dest = (void *)(uintptr_t)(dest);                \
     u32 _size = size;                                       \
     while (1)                                               \
     {                                                       \
@@ -210,7 +210,7 @@ extern void DmaSet(int dmaNum, const void * src, void * dest, u32 control);
 
 #define DmaClearLarge(dmaNum, dest, size, block, bit) \
 {                                                           \
-    void *_dest = dest;                                     \
+    void *_dest = (void *)(uintptr_t)(dest);                \
     u32 _size = size;                                       \
     while (1)                                               \
     {                                                       \
@@ -231,8 +231,8 @@ extern void DmaSet(int dmaNum, const void * src, void * dest, u32 control);
 
 #define DmaCopyDefvars(dmaNum, src, dest, size, bit) \
 {                                                    \
-    const void *_src = src;                          \
-    void *_dest = dest;                              \
+    const void *_src = (const void *)(uintptr_t)(src); \
+    void *_dest = (void *)(uintptr_t)(dest);           \
     u32 _size = size;                                \
     DmaCopy##bit(dmaNum, _src, _dest, _size);        \
 }
@@ -242,7 +242,7 @@ extern void DmaSet(int dmaNum, const void * src, void * dest, u32 control);
 
 #define DmaFillDefvars(dmaNum, value, dest, size, bit) \
 {                                                      \
-    void *_dest = dest;                                \
+    void *_dest = (void *)(uintptr_t)(dest);           \
     u32 _size = size;                                  \
     DmaFill##bit(dmaNum, value, _dest, _size);         \
 }
@@ -252,7 +252,7 @@ extern void DmaSet(int dmaNum, const void * src, void * dest, u32 control);
 
 #define DmaClearDefvars(dmaNum, dest, size, bit) \
 {                                                \
-    void *_dest = dest;                          \
+    void *_dest = (void *)(uintptr_t)(dest);     \
     u32 _size = size;                            \
     DmaClear##bit(dmaNum, _dest, _size);         \
 }

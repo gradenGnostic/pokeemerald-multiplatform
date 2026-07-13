@@ -276,6 +276,7 @@ u32 VerifyFlashSectorNBytes(u16 sectorNum, u8 *src, u32 n)
 }
 #endif
 
+#ifndef PORTABLE
 u32 ProgramFlashSectorAndVerify(u16 sectorNum, u8 *src)
 {
     u8 i;
@@ -313,3 +314,4 @@ u32 ProgramFlashSectorAndVerifyNBytes(u16 sectorNum, u8 *src, u32 n)
 
     return result;
 }
+#endif

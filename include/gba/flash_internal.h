@@ -85,6 +85,6 @@ u16 WaitForFlashWrite_DUMMY(u8 phase, u8 *addr, u8 lastData);
 u16 EraseFlashChip_DUMMY(void);
 u16 EraseFlashSector_DUMMY(u16 sectorNum);
 u16 ProgramFlashByte_DUMMY(u16 sectorNum, u32 offset, u8 data);
-u16 ProgramFlashSector_DUMMY(u16 sectorNum, void *src);
+u16 ProgramFlashSector_DUMMY(u16 sectorNum, u8 *src);
 
 #endif // GUARD_GBA_FLASH_INTERNAL_H

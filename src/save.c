@@ -230,7 +230,11 @@ static u8 HandleWriteSectorNBytes(u8 sectorId, u8 *data, u16 size)
 
 static u8 TryWriteSector(u8 sector, u8 *data)
 {
+#ifdef PORTABLE
+    if (ProgramFlashSector_DUMMY(sector, data)) // is damaged?
+#else
     if (ProgramFlashSectorAndVerify(sector, data)) // is damaged?
+#endif
     {
         // Failed
         SetDamagedSectorBits(ENABLE, sector);
@@ -974,7 +978,11 @@ u32 TryWriteSpecialSaveSector(u8 sector, u8 *src)
     savData = &gSaveDataBuffer.data[4]; // data[4] to skip past SPECIAL_SECTOR_SENTINEL
     for (; i <= size; i++)
         savData[i] = src[i];
+#ifdef PORTABLE
+    if (ProgramFlashSector_DUMMY(sector, savDataBuffer) != 0)
+#else
     if (ProgramFlashSectorAndVerify(sector, savDataBuffer) != 0)
+#endif
         return SAVE_STATUS_ERROR;
     return SAVE_STATUS_OK;
 }

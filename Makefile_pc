@@ -1,12 +1,22 @@
+NATIVE_LINUX ?= 0
+
+ifeq ($(NATIVE_LINUX),1)
+PREFIX :=
+else
 PREFIX := i686-w64-mingw32-
+endif
 OBJCOPY := $(PREFIX)objcopy
 CC := $(PREFIX)gcc
 AS := $(PREFIX)as
 
-SDL_DIR := /home/pokeemerald/SDL2-2.0.14/i686-w64-mingw32
+SDL_DIR := /usr/i686-w64-mingw32
 ASM_PSEUDO_OP_CONV := sed -e 's/\.4byte/\.int/g;s/\.2byte/\.short/g'
 #FIX_UNDERSCORE is required for 32 bit windows
+ifeq ($(NATIVE_LINUX),1)
+FIX_UNDERSCORE := true
+else
 FIX_UNDERSCORE := $(OBJCOPY) --prefix-symbol _
+endif
 
 export CPP := $(PREFIX)cpp
 export LD := $(PREFIX)ld
@@ -29,7 +39,11 @@ TILE_RENDERER := RENDERER_EASY_DRAW
 
 SHELL := /bin/bash -o pipefail
 
+ifeq ($(NATIVE_LINUX),1)
+ELF = pokeemerald.elf
+else
 ELF = $(ROM:.exe=.elf)
+endif
 MAP = $(ROM:.exe=.map)
 
 C_SUBDIR = src
@@ -52,17 +66,32 @@ ASFLAGS := --32 --defsym MODERN=$(MODERN) --defsym PORTABLE=1 --defsym UBFIX=1
 GCC_VER := $(shell $(CC) -dumpversion)
 
 CC1 	:= $(shell $(PREFIX)gcc --print-prog-name=cc1) -quiet
-override CFLAGS += -Wno-trigraphs -Wimplicit -Wparentheses -Wunused -m32 -std=gnu99 -fleading-underscore -fno-dce -fno-builtin -Wno-unused-function -DPORTABLE -DNONMATCHING -D UBFIX -DMODERN=$(MODERN)
-ROM		:= pokeemerald.exe
-OBJ_DIR	:= build/pc
+override CFLAGS += -Wno-trigraphs -Wimplicit -Wparentheses -Wunused -m32 -std=gnu99 -fno-dce -fno-builtin -Wno-unused-function -DPORTABLE -DNONMATCHING -D UBFIX -DMODERN=$(MODERN)
+ifeq ($(NATIVE_LINUX),1)
+override CFLAGS += -fno-pie
+ROM := pokeemerald
+OBJ_DIR := build/linux
+else
+override CFLAGS += -fleading-underscore
+ROM := pokeemerald.exe
+OBJ_DIR := build/pc
+endif
 
-CPPFLAGS := -iquote include -iquote $(GFLIB_SUBDIR) -Wno-trigraphs -D NONMATCHING -D PORTABLE -D $(TARGET_PLATFORM) -D $(TILE_RENDERER) -D MODERN=$(MODERN) -D UBFIX -I$(SDL_DIR)/include -L$(SDL_DIR)/lib
+CPPFLAGS := -std=gnu99 -iquote include -iquote $(GFLIB_SUBDIR) -Wno-trigraphs -D NONMATCHING -D PORTABLE -D $(TARGET_PLATFORM) -D $(TILE_RENDERER) -D MODERN=$(MODERN) -D UBFIX
+ifeq ($(NATIVE_LINUX),1)
+CPPFLAGS += -m32 $(shell pkg-config --cflags sdl2)
+else
+CPPFLAGS += -I$(SDL_DIR)/include -L$(SDL_DIR)/lib
+endif
 
 LDFLAGS = -Map ../../$(MAP)
 
 PLATFORM_INCLUDES := 
 
-#Windows only
+ifeq ($(NATIVE_LINUX),1)
+PLATFORM_INCLUDES += $(shell pkg-config --libs sdl2) -lm
+else
+# Windows only
 ifneq ($(NO_STD_LIB),1)
 	PLATFORM_INCLUDES += -lmingw32
 endif
@@ -77,6 +106,7 @@ ifeq ($(TARGET_PLATFORM), PLATFORM_WIN32)
 		CPPFLAGS += -D NO_STD_LIB_ENABLED
 	endif
 	PLATFORM_INCLUDES += -lkernel32 -luser32 -lgdi32
+endif
 endif
 
 LIB := $(LIBPATH) -lgcc -lc
@@ -107,7 +137,10 @@ MAKEFLAGS += --no-print-directory
 # Secondary expansion is required for dependency variables in object rules.
 .SECONDEXPANSION:
 
-.PHONY: all rom clean compare tidy mostlyclean libagbsyscall modern tidymodern tidynonmodern
+.PHONY: all rom linux clean compare tidy mostlyclean libagbsyscall modern tidymodern tidynonmodern
+
+linux:
+	$(MAKE) -f Makefile_pc NATIVE_LINUX=1 rom
 
 infoshell = $(foreach line, $(shell $1 | sed "s/ /__SPACE__/g"), $(info $(subst __SPACE__, ,$(line))))
 
@@ -233,7 +266,11 @@ endif
 
 $(C_BUILDDIR)/%.o : $(C_SUBDIR)/%.c $$(c_dep)
 	@$(CPP) $(CPPFLAGS) $< -o $(C_BUILDDIR)/$*.i
+ifeq ($(NATIVE_LINUX),1)
+	@$(PREPROC) $(C_BUILDDIR)/$*.i charmap.txt | $(CC) $(CFLAGS) -S -x cpp-output -o $(C_BUILDDIR)/$*.s -
+else
 	@$(PREPROC) $(C_BUILDDIR)/$*.i charmap.txt | $(CC1) $(CFLAGS) -o $(C_BUILDDIR)/$*.s
+endif
 	@echo -e ".text\n\t.align\t2, 0\n" >> $(C_BUILDDIR)/$*.s
 	$(AS) $(ASFLAGS) -o $@ $(C_BUILDDIR)/$*.s
 
@@ -245,7 +282,11 @@ endif
 
 $(GFLIB_BUILDDIR)/%.o : $(GFLIB_SUBDIR)/%.c $$(c_dep)
 	@$(CPP) $(CPPFLAGS) $< -o $(GFLIB_BUILDDIR)/$*.i
+ifeq ($(NATIVE_LINUX),1)
+	@$(PREPROC) $(GFLIB_BUILDDIR)/$*.i charmap.txt | $(CC) $(CFLAGS) -S -x cpp-output -o $(GFLIB_BUILDDIR)/$*.s -
+else
 	@$(PREPROC) $(GFLIB_BUILDDIR)/$*.i charmap.txt | $(CC1) $(CFLAGS) -o $(GFLIB_BUILDDIR)/$*.s
+endif
 	@echo -e ".text\n\t.align\t2, 0\n" >> $(GFLIB_BUILDDIR)/$*.s
 	$(AS) $(ASFLAGS) -o $@ $(GFLIB_BUILDDIR)/$*.s
 
@@ -305,4 +346,8 @@ $(ELF): $(OBJ_DIR)/ld_script.ld $(OBJS)
 	$(FIX) $@ -t"$(TITLE)" -c$(GAME_CODE) -m$(MAKER_CODE) -r$(REVISION) --silent
 
 $(ROM): $(OBJS)
+ifeq ($(NATIVE_LINUX),1)
+	$(CC) $(CFLAGS) -no-pie -Wl,--demangle $^ $(PLATFORM_INCLUDES) -o $@
+else
 	$(CC) $(CFLAGS) -Wl,--demangle $^ -static-libgcc -L$(SDL_DIR)/lib $(PLATFORM_INCLUDES) -lwinmm -lxinput -o $@
+endif
