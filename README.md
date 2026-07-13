@@ -83,7 +83,7 @@ Windows, Linux, and Android use the same border assets from the repository root:
 - `BG.png` is the default background and scales independently to fill the complete output.
 - `BG1.png`, `BG2.png`, and subsequent sequentially numbered files add selectable backgrounds.
 
-The in-game Options menu includes `BORDER BG`. Select `BG` for the default artwork, `OFF` for a plain black background, or `BG 1`, `BG 2`, and so on for detected numbered backgrounds. The choice is stored in the save data. Numbered files must be contiguous; for example, `BG2.png` is only detected when `BG1.png` is also present.
+The in-game Options menu includes `BORDER BG`. Select `BG` for the default artwork, `OFF` for a plain black background, or `BG 1`, `BG 2`, and so on for detected numbered backgrounds. The choice is written immediately to `pokeemerald.cfg` (Android uses the app's private storage), so it persists without requiring an in-game save. Numbered files must be contiguous; for example, `BG2.png` is only detected when `BG1.png` is also present.
 
 Backgrounds and the frame should use a 1280x720 canvas. Keep the frame opening centered at the same location and dimensions as `Border.png` so it remains aligned at different output aspect ratios.
 

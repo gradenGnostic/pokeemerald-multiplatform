@@ -9,6 +9,8 @@ void Platform_ReadFlash(u16 sectorNum, u32 offset, u8 *dest, u32 size);
 void Platform_QueueAudio(float *audioBuffer, s32 samplesPerFrame);
 u16 Platform_GetKeyInput(void);
 u8 Platform_GetBorderBackgroundCount(void);
+u8 Platform_GetBorderBackground(void);
+void Platform_SetBorderBackground(u8 selection);
 void Platform_GetStatus(struct SiiRtcInfo *rtc);
 void Platform_SetStatus(struct SiiRtcInfo *rtc);
 static void UpdateInternalClock(void);

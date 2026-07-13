@@ -170,19 +170,31 @@ public final class GbaControlsView extends View {
     }
 
     private void drawBorder(Canvas canvas) {
-        int backgroundOption = getBorderBackground();
-        int backgroundIndex = backgroundOption == 0 ? 0 : backgroundOption - 1;
-        if (backgroundOption != 1 && backgroundIndex < backgrounds.length
-                && backgrounds[backgroundIndex] != null) {
-            canvas.drawBitmap(backgrounds[backgroundIndex], null,
-                    new Rect(0, 0, getWidth(), getHeight()), borderPaint);
-        }
-
         int scale = Math.max(1, Math.min(getWidth() / 240, getHeight() / 160));
         int gameWidth = 240 * scale;
         int gameHeight = 160 * scale;
         int gameX = (getWidth() - gameWidth) / 2;
         int gameY = (getHeight() - gameHeight) / 2;
+
+        int backgroundOption = getBorderBackground();
+        int backgroundIndex = backgroundOption == 0 ? 0 : backgroundOption - 1;
+        if (backgroundOption != 1 && backgroundIndex < backgrounds.length
+                && backgrounds[backgroundIndex] != null) {
+            Bitmap background = backgrounds[backgroundIndex];
+            Rect output = new Rect(0, 0, getWidth(), getHeight());
+            Rect[] regions = {
+                    new Rect(0, 0, getWidth(), gameY),
+                    new Rect(0, gameY + gameHeight, getWidth(), getHeight()),
+                    new Rect(0, gameY, gameX, gameY + gameHeight),
+                    new Rect(gameX + gameWidth, gameY, getWidth(), gameY + gameHeight)
+            };
+            for (Rect region : regions) {
+                int state = canvas.save();
+                canvas.clipRect(region);
+                canvas.drawBitmap(background, null, output, borderPaint);
+                canvas.restoreToCount(state);
+            }
+        }
 
         if (border != null) {
             int innerWidth = gameWidth - 2;

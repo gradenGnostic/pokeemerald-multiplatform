@@ -57,6 +57,9 @@ struct SiiRtcInfo internalClock;
 
 static FILE *sSaveFile = NULL;
 static char sSavePath[1024] = "pokeemerald.sav";
+static char sConfigPath[1024] = "pokeemerald.cfg";
+static u8 sBorderBackground;
+static bool sHasBorderBackgroundConfig;
 #ifdef __ANDROID__
 static SDL_GameController *androidController;
 #endif
@@ -69,6 +72,8 @@ void ProcessEvents(void);
 void VDraw(SDL_Texture *texture);
 
 static void ReadSaveFile(const char *path);
+static void ReadConfigFile(void);
+static void StoreConfigFile(void);
 static void StoreSaveFile(void);
 static void CloseSaveFile(void);
 
@@ -116,10 +121,12 @@ int main(int argc, char **argv)
     if (prefPath != NULL)
     {
         SDL_snprintf(sSavePath, sizeof(sSavePath), "%spokeemerald.sav", prefPath);
+        SDL_snprintf(sConfigPath, sizeof(sConfigPath), "%spokeemerald.cfg", prefPath);
         SDL_free(prefPath);
     }
 #endif
     ReadSaveFile(sSavePath);
+    ReadConfigFile();
 
 #ifdef __ANDROID__
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
@@ -282,7 +289,7 @@ int main(int argc, char **argv)
                     VDraw(sdlTexture);
                     SDL_RenderClear(sdlRenderer);
 #if defined(NATIVE_LINUX) || defined(_WIN32)
-                    u8 backgroundOption = gSaveBlock2Ptr->optionsBorderBackground;
+                    u8 backgroundOption = Platform_GetBorderBackground();
                     int backgroundIndex = backgroundOption == 0 ? 0 : backgroundOption - 1;
                     if (backgroundOption != 1 && backgroundIndex < sBorderBackgroundCount
                      && sdlBackgroundTextures[backgroundIndex] != NULL)
@@ -390,6 +397,31 @@ static void ReadSaveFile(const char *path)
     }
 }
 
+static void ReadConfigFile(void)
+{
+    FILE *configFile = fopen(sConfigPath, "r");
+    unsigned int selection;
+
+    if (configFile == NULL)
+        return;
+    if (fscanf(configFile, "borderBackground=%u", &selection) == 1 && selection < 16)
+    {
+        sBorderBackground = selection;
+        sHasBorderBackgroundConfig = true;
+    }
+    fclose(configFile);
+}
+
+static void StoreConfigFile(void)
+{
+    FILE *configFile = fopen(sConfigPath, "w");
+
+    if (configFile == NULL)
+        return;
+    fprintf(configFile, "borderBackground=%u\n", sBorderBackground);
+    fclose(configFile);
+}
+
 static void StoreSaveFile()
 {
     if (sSaveFile != NULL)
@@ -440,10 +472,26 @@ u8 Platform_GetBorderBackgroundCount(void)
     return sBorderBackgroundCount + 1;
 }
 
+u8 Platform_GetBorderBackground(void)
+{
+    if (sHasBorderBackgroundConfig)
+        return sBorderBackground;
+    if (gSaveBlock2Ptr != NULL)
+        return gSaveBlock2Ptr->optionsBorderBackground;
+    return 0;
+}
+
+void Platform_SetBorderBackground(u8 selection)
+{
+    sBorderBackground = selection;
+    sHasBorderBackgroundConfig = true;
+    StoreConfigFile();
+}
+
 #ifdef __ANDROID__
 JNIEXPORT jint JNICALL Java_com_pokeemerald_experimental_GbaControlsView_getBorderBackground(JNIEnv *env, jclass clazz)
 {
-    return gSaveBlock2Ptr->optionsBorderBackground;
+    return Platform_GetBorderBackground();
 }
 #endif
 

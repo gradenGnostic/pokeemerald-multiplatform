@@ -75,6 +75,8 @@ static void ButtonMode_DrawChoices(u8 selection);
 static u8 BorderBackground_ProcessInput(u8 selection);
 static void BorderBackground_DrawChoices(u8 selection);
 static u8 GetBorderBackgroundCount(void);
+static u8 GetBorderBackground(void);
+static void SetBorderBackground(u8 selection);
 static void DrawHeaderText(void);
 static void DrawOptionMenuTexts(void);
 static void DrawBgWindowFrames(void);
@@ -244,7 +246,7 @@ void CB2_InitOptionMenu(void)
         gTasks[taskId].tSound = gSaveBlock2Ptr->optionsSound;
         gTasks[taskId].tButtonMode = gSaveBlock2Ptr->optionsButtonMode;
         gTasks[taskId].tWindowFrameType = gSaveBlock2Ptr->optionsWindowFrameType;
-        gTasks[taskId].tBorderBackground = gSaveBlock2Ptr->optionsBorderBackground;
+        gTasks[taskId].tBorderBackground = GetBorderBackground();
         if (gTasks[taskId].tBorderBackground >= GetBorderBackgroundCount())
             gTasks[taskId].tBorderBackground = 0;
 
@@ -357,6 +359,7 @@ static void Task_OptionMenuProcessInput(u8 taskId)
             if (previousOption != gTasks[taskId].tBorderBackground)
             {
                 gSaveBlock2Ptr->optionsBorderBackground = gTasks[taskId].tBorderBackground;
+                SetBorderBackground(gTasks[taskId].tBorderBackground);
                 BorderBackground_DrawChoices(gTasks[taskId].tBorderBackground);
             }
             break;
@@ -381,6 +384,7 @@ static void Task_OptionMenuSave(u8 taskId)
     gSaveBlock2Ptr->optionsButtonMode = gTasks[taskId].tButtonMode;
     gSaveBlock2Ptr->optionsWindowFrameType = gTasks[taskId].tWindowFrameType;
     gSaveBlock2Ptr->optionsBorderBackground = gTasks[taskId].tBorderBackground;
+    SetBorderBackground(gTasks[taskId].tBorderBackground);
 
     BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
     gTasks[taskId].func = Task_OptionMenuFadeOut;
@@ -663,6 +667,22 @@ static u8 GetBorderBackgroundCount(void)
     return Platform_GetBorderBackgroundCount();
 #else
     return 2;
+#endif
+}
+
+static u8 GetBorderBackground(void)
+{
+#ifdef PLATFORM_SDL2
+    return Platform_GetBorderBackground();
+#else
+    return gSaveBlock2Ptr->optionsBorderBackground;
+#endif
+}
+
+static void SetBorderBackground(u8 selection)
+{
+#ifdef PLATFORM_SDL2
+    Platform_SetBorderBackground(selection);
 #endif
 }
 
