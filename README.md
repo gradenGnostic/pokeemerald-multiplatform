@@ -109,7 +109,7 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 
 Android saves are stored in the app's writable private storage. Windows and Linux continue to use `pokeemerald.sav` in the working directory.
 
-Android includes an always-visible, labeled multitouch overlay for the D-pad, A, B, Start, Select, L, and R. The controls occupy the widescreen side borders rather than covering the 3:2 gameplay viewport. Multiple buttons can be held simultaneously.
+Android includes a labeled multitouch overlay for the D-pad, A, B, Start, Select, L, and R.
 
 ## Upstream Project
 
