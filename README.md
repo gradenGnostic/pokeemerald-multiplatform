@@ -27,6 +27,7 @@ The project runs the decompiled game code directly. It is not a bundled GBA emul
 - Added aspect-ratio-preserving 3:2 rendering, centered letterboxing, integer pixel scaling, and black borders.
 - Added an experimental Android SDL2/Gradle project and an ARMv7 cross-compilation pipeline.
 - Added Android rendering, frame pacing, audio output, writable save storage, and lifecycle handling.
+- Added an Android-native labeled multitouch overlay and SDL game-controller input.
 - Added launcher icons on Android and an embedded multi-resolution icon on Windows.
 
 ## Controls
@@ -44,7 +45,7 @@ The project runs the decompiled game code directly. It is not a bundled GBA emul
 | Pause | `Ctrl+P` |
 | Soft reset | `Ctrl+R` |
 
-Windows XInput controllers are also supported by the SDL2 backend. Native Linux currently uses keyboard input.
+Windows XInput controllers are supported by the SDL2 backend. Android supports SDL-compatible gamepads, including D-pad and left analog-stick movement. Native Linux currently uses keyboard input.
 
 ## Windows Build
 
@@ -108,7 +109,7 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 
 Android saves are stored in the app's writable private storage. Windows and Linux continue to use `pokeemerald.sav` in the working directory.
 
-No touch controls have been implemented.
+Android includes an always-visible, labeled multitouch overlay for the D-pad, A, B, Start, Select, L, and R. The controls occupy the widescreen side borders rather than covering the 3:2 gameplay viewport. Multiple buttons can be held simultaneously.
 
 ## Upstream Project
 

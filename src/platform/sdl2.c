@@ -47,6 +47,9 @@ struct SiiRtcInfo internalClock;
 
 static FILE *sSaveFile = NULL;
 static char sSavePath[1024] = "pokeemerald.sav";
+#ifdef __ANDROID__
+static SDL_GameController *androidController;
+#endif
 
 extern void AgbMain(void);
 extern void DoSoftReset(void);
@@ -61,6 +64,11 @@ static void CloseSaveFile(void);
 
 static void UpdateInternalClock(void);
 
+#ifdef __ANDROID__
+static void HandleTouchEvent(const SDL_TouchFingerEvent *event);
+static void DrawTouchControls(void);
+#endif
+
 int main(int argc, char **argv)
 {
     // Open an output console on Windows
@@ -72,12 +80,26 @@ int main(int argc, char **argv)
 
 #ifdef __ANDROID__
     SDL_setenv("SDL_AUDIODRIVER", "openslES", 1);
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+    SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
 #endif
-    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
+    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO
+#ifdef __ANDROID__
+                | SDL_INIT_GAMECONTROLLER
+#endif
+                ) < 0)
     {
         DBGPRINTF("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
         return 1;
     }
+
+#ifdef __ANDROID__
+    for (int i = 0; i < SDL_NumJoysticks() && androidController == NULL; i++)
+    {
+        if (SDL_IsGameController(i))
+            androidController = SDL_GameControllerOpen(i);
+    }
+#endif
 
 #ifdef __ANDROID__
     char *prefPath = SDL_GetPrefPath("pokeemerald", "pokeemerald");
@@ -322,12 +344,260 @@ static void CloseSaveFile()
 #define KEY_DPAD_RIGHT    SDLK_RIGHT
 
 #define HANDLE_KEYUP(key) \
-case KEY_##key:  keys &= ~key; break;
+case KEY_##key:  keyboardKeys &= ~key; break;
 
 #define HANDLE_KEYDOWN(key) \
-case KEY_##key:  keys |= key; break;
+case KEY_##key:  keyboardKeys |= key; break;
 
-static u16 keys;
+static u16 keyboardKeys;
+
+#ifdef __ANDROID__
+#define MAX_TOUCH_FINGERS 10
+
+struct TouchFinger
+{
+    SDL_FingerID id;
+    float x;
+    float y;
+    bool active;
+};
+
+static struct TouchFinger touchFingers[MAX_TOUCH_FINGERS];
+static u16 touchKeys;
+static u16 controllerKeys;
+static u16 controllerAxisKeys;
+static Sint16 controllerAxisX;
+static Sint16 controllerAxisY;
+
+static bool IsInsideRect(int x, int y, SDL_Rect rect)
+{
+    SDL_Point point = {x, y};
+    return SDL_PointInRect(&point, &rect);
+}
+
+static int MinInt(int a, int b)
+{
+    return a < b ? a : b;
+}
+
+static int GetControlSideWidth(int windowWidth, int windowHeight)
+{
+    int sideWidth = (windowWidth - windowHeight * 3 / 2) / 2;
+    int minimumWidth = windowWidth * 14 / 100;
+    return sideWidth > minimumWidth ? sideWidth : minimumWidth;
+}
+
+static void UpdateTouchKeys(void)
+{
+    int windowWidth;
+    int windowHeight;
+    SDL_GetWindowSize(sdlWindow, &windowWidth, &windowHeight);
+    int sideWidth = GetControlSideWidth(windowWidth, windowHeight);
+    int buttonSize = MinInt(sideWidth * 2 / 5, windowHeight / 6);
+    int dpadUnit = MinInt(sideWidth / 3, windowHeight / 8);
+    int dpadX = sideWidth * 2 / 3;
+    int dpadY = windowHeight * 7 / 10;
+    SDL_Rect dpadUp = {dpadX - dpadUnit / 2, dpadY - dpadUnit * 3 / 2,
+                       dpadUnit, dpadUnit};
+    SDL_Rect dpadDown = {dpadX - dpadUnit / 2, dpadY + dpadUnit / 2,
+                         dpadUnit, dpadUnit};
+    SDL_Rect dpadLeft = {dpadX - dpadUnit * 3 / 2, dpadY - dpadUnit / 2,
+                         dpadUnit, dpadUnit};
+    SDL_Rect dpadRight = {dpadX + dpadUnit / 2, dpadY - dpadUnit / 2,
+                          dpadUnit, dpadUnit};
+    SDL_Rect aButton = {windowWidth - sideWidth / 4 - buttonSize,
+                        windowHeight * 58 / 100, buttonSize, buttonSize};
+    SDL_Rect bButton = {windowWidth - sideWidth + sideWidth / 4,
+                        windowHeight * 76 / 100, buttonSize, buttonSize};
+    SDL_Rect selectButton = {sideWidth / 4, windowHeight / 4,
+                             sideWidth / 2, windowHeight / 10};
+    SDL_Rect startButton = {windowWidth - sideWidth * 3 / 4, windowHeight / 4,
+                            sideWidth / 2, windowHeight / 10};
+    SDL_Rect lButton = {sideWidth / 4, windowHeight / 20,
+                        sideWidth / 2, windowHeight / 10};
+    SDL_Rect rButton = {windowWidth - sideWidth * 3 / 4, windowHeight / 20,
+                        sideWidth / 2, windowHeight / 10};
+
+    touchKeys = 0;
+
+    for (int i = 0; i < MAX_TOUCH_FINGERS; i++)
+    {
+        if (!touchFingers[i].active)
+            continue;
+
+        int x = touchFingers[i].x * windowWidth;
+        int y = touchFingers[i].y * windowHeight;
+
+        if (IsInsideRect(x, y, dpadUp)) touchKeys |= DPAD_UP;
+        if (IsInsideRect(x, y, dpadDown)) touchKeys |= DPAD_DOWN;
+        if (IsInsideRect(x, y, dpadLeft)) touchKeys |= DPAD_LEFT;
+        if (IsInsideRect(x, y, dpadRight)) touchKeys |= DPAD_RIGHT;
+
+        if (IsInsideRect(x, y, aButton)) touchKeys |= A_BUTTON;
+        if (IsInsideRect(x, y, bButton)) touchKeys |= B_BUTTON;
+        if (IsInsideRect(x, y, startButton)) touchKeys |= START_BUTTON;
+        if (IsInsideRect(x, y, selectButton)) touchKeys |= SELECT_BUTTON;
+        if (IsInsideRect(x, y, lButton)) touchKeys |= L_BUTTON;
+        if (IsInsideRect(x, y, rButton)) touchKeys |= R_BUTTON;
+    }
+}
+
+static void HandleTouchEvent(const SDL_TouchFingerEvent *event)
+{
+    int slot = -1;
+    for (int i = 0; i < MAX_TOUCH_FINGERS; i++)
+    {
+        if (touchFingers[i].active && touchFingers[i].id == event->fingerId)
+        {
+            slot = i;
+            break;
+        }
+        if (slot < 0 && !touchFingers[i].active)
+            slot = i;
+    }
+
+    if (slot < 0)
+        return;
+
+    if (event->type == SDL_FINGERUP)
+    {
+        touchFingers[slot].active = false;
+    }
+    else
+    {
+        touchFingers[slot].id = event->fingerId;
+        touchFingers[slot].x = event->x;
+        touchFingers[slot].y = event->y;
+        touchFingers[slot].active = true;
+    }
+
+    UpdateTouchKeys();
+}
+
+static const Uint8 *GetGlyph(char character)
+{
+    static const Uint8 glyphA[7] = {14, 17, 17, 31, 17, 17, 17};
+    static const Uint8 glyphB[7] = {30, 17, 17, 30, 17, 17, 30};
+    static const Uint8 glyphC[7] = {15, 16, 16, 16, 16, 16, 15};
+    static const Uint8 glyphE[7] = {31, 16, 16, 30, 16, 16, 31};
+    static const Uint8 glyphL[7] = {16, 16, 16, 16, 16, 16, 31};
+    static const Uint8 glyphR[7] = {30, 17, 17, 30, 20, 18, 17};
+    static const Uint8 glyphS[7] = {15, 16, 16, 14, 1, 1, 30};
+    static const Uint8 glyphT[7] = {31, 4, 4, 4, 4, 4, 4};
+
+    switch (character)
+    {
+    case 'A': return glyphA;
+    case 'B': return glyphB;
+    case 'C': return glyphC;
+    case 'E': return glyphE;
+    case 'L': return glyphL;
+    case 'R': return glyphR;
+    case 'S': return glyphS;
+    case 'T': return glyphT;
+    default:  return NULL;
+    }
+}
+
+static void DrawControlLabel(SDL_Rect rect, const char *label)
+{
+    int length = SDL_strlen(label);
+    int scale = MinInt(rect.h / 9, rect.w / (length * 6));
+    if (scale < 1)
+        scale = 1;
+    int startX = rect.x + (rect.w - (length * 6 - 1) * scale) / 2;
+    int startY = rect.y + (rect.h - 7 * scale) / 2;
+
+    SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 255, 230);
+    for (int character = 0; character < length; character++)
+    {
+        const Uint8 *glyph = GetGlyph(label[character]);
+        if (glyph == NULL)
+            continue;
+        for (int row = 0; row < 7; row++)
+        {
+            for (int column = 0; column < 5; column++)
+            {
+                if (glyph[row] & (1 << (4 - column)))
+                {
+                    SDL_Rect pixel = {startX + (character * 6 + column) * scale,
+                                      startY + row * scale, scale, scale};
+                    SDL_RenderFillRect(sdlRenderer, &pixel);
+                }
+            }
+        }
+    }
+}
+
+static void DrawControlRect(SDL_Rect rect, bool pressed, const char *label)
+{
+    SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 255, pressed ? 150 : 65);
+    SDL_RenderFillRect(sdlRenderer, &rect);
+    SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 255, pressed ? 230 : 130);
+    SDL_RenderDrawRect(sdlRenderer, &rect);
+    if (label != NULL)
+        DrawControlLabel(rect, label);
+}
+
+static void DrawTouchControls(void)
+{
+    int windowWidth;
+    int windowHeight;
+    SDL_GetWindowSize(sdlWindow, &windowWidth, &windowHeight);
+    int sideWidth = GetControlSideWidth(windowWidth, windowHeight);
+    int buttonSize = MinInt(sideWidth * 2 / 5, windowHeight / 6);
+    int dpadUnit = MinInt(sideWidth / 3, windowHeight / 8);
+    int dpadX = sideWidth * 2 / 3;
+    int dpadY = windowHeight * 7 / 10;
+
+    SDL_RenderSetLogicalSize(sdlRenderer, 0, 0);
+    SDL_SetRenderDrawBlendMode(sdlRenderer, SDL_BLENDMODE_BLEND);
+
+    DrawControlRect((SDL_Rect){dpadX - dpadUnit / 2, dpadY - dpadUnit * 3 / 2,
+                               dpadUnit, dpadUnit}, touchKeys & DPAD_UP, NULL);
+    DrawControlRect((SDL_Rect){dpadX - dpadUnit / 2, dpadY + dpadUnit / 2,
+                               dpadUnit, dpadUnit}, touchKeys & DPAD_DOWN, NULL);
+    DrawControlRect((SDL_Rect){dpadX - dpadUnit * 3 / 2, dpadY - dpadUnit / 2,
+                               dpadUnit, dpadUnit}, touchKeys & DPAD_LEFT, NULL);
+    DrawControlRect((SDL_Rect){dpadX + dpadUnit / 2, dpadY - dpadUnit / 2,
+                               dpadUnit, dpadUnit}, touchKeys & DPAD_RIGHT, NULL);
+    DrawControlRect((SDL_Rect){windowWidth - sideWidth / 4 - buttonSize,
+                               windowHeight * 58 / 100, buttonSize, buttonSize}, touchKeys & A_BUTTON, "A");
+    DrawControlRect((SDL_Rect){windowWidth - sideWidth + sideWidth / 4,
+                               windowHeight * 76 / 100, buttonSize, buttonSize}, touchKeys & B_BUTTON, "B");
+    DrawControlRect((SDL_Rect){windowWidth - sideWidth * 3 / 4, windowHeight / 4,
+                               sideWidth / 2, windowHeight / 10}, touchKeys & START_BUTTON, "START");
+    DrawControlRect((SDL_Rect){sideWidth / 4, windowHeight / 4,
+                               sideWidth / 2, windowHeight / 10}, touchKeys & SELECT_BUTTON, "SELECT");
+    DrawControlRect((SDL_Rect){sideWidth / 4, windowHeight / 20,
+                               sideWidth / 2, windowHeight / 10}, touchKeys & L_BUTTON, "L");
+    DrawControlRect((SDL_Rect){windowWidth - sideWidth * 3 / 4, windowHeight / 20,
+                               sideWidth / 2, windowHeight / 10}, touchKeys & R_BUTTON, "R");
+
+    SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 0, 255);
+    SDL_SetRenderDrawBlendMode(sdlRenderer, SDL_BLENDMODE_NONE);
+    SDL_RenderSetLogicalSize(sdlRenderer, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+    SDL_RenderSetIntegerScale(sdlRenderer, SDL_TRUE);
+}
+
+static u16 ControllerButtonMask(Uint8 button)
+{
+    switch (button)
+    {
+    case SDL_CONTROLLER_BUTTON_A:             return A_BUTTON;
+    case SDL_CONTROLLER_BUTTON_B:             return B_BUTTON;
+    case SDL_CONTROLLER_BUTTON_BACK:          return SELECT_BUTTON;
+    case SDL_CONTROLLER_BUTTON_START:         return START_BUTTON;
+    case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:  return L_BUTTON;
+    case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: return R_BUTTON;
+    case SDL_CONTROLLER_BUTTON_DPAD_UP:       return DPAD_UP;
+    case SDL_CONTROLLER_BUTTON_DPAD_DOWN:     return DPAD_DOWN;
+    case SDL_CONTROLLER_BUTTON_DPAD_LEFT:     return DPAD_LEFT;
+    case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:    return DPAD_RIGHT;
+    default:                                  return 0;
+    }
+}
+#endif
 
 void ProcessEvents(void)
 {
@@ -340,6 +610,42 @@ void ProcessEvents(void)
         case SDL_QUIT:
             isRunning = false;
             break;
+#ifdef __ANDROID__
+        case SDL_CONTROLLERDEVICEADDED:
+            if (androidController == NULL && SDL_IsGameController(event.cdevice.which))
+                androidController = SDL_GameControllerOpen(event.cdevice.which);
+            break;
+        case SDL_CONTROLLERDEVICEREMOVED:
+            if (androidController != NULL
+             && SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(androidController)) == event.cdevice.which)
+            {
+                SDL_GameControllerClose(androidController);
+                androidController = NULL;
+                controllerKeys = 0;
+                controllerAxisKeys = 0;
+                controllerAxisX = 0;
+                controllerAxisY = 0;
+            }
+            break;
+        case SDL_CONTROLLERBUTTONDOWN:
+            controllerKeys |= ControllerButtonMask(event.cbutton.button);
+            break;
+        case SDL_CONTROLLERBUTTONUP:
+            controllerKeys &= ~ControllerButtonMask(event.cbutton.button);
+            break;
+        case SDL_CONTROLLERAXISMOTION:
+            if (event.caxis.axis == SDL_CONTROLLER_AXIS_LEFTX)
+                controllerAxisX = event.caxis.value;
+            else if (event.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY)
+                controllerAxisY = event.caxis.value;
+
+            controllerAxisKeys = 0;
+            if (controllerAxisX < -16000) controllerAxisKeys |= DPAD_LEFT;
+            if (controllerAxisX >  16000) controllerAxisKeys |= DPAD_RIGHT;
+            if (controllerAxisY < -16000) controllerAxisKeys |= DPAD_UP;
+            if (controllerAxisY >  16000) controllerAxisKeys |= DPAD_DOWN;
+            break;
+#endif
         case SDL_KEYUP:
             switch (event.key.keysym.sym)
             {
@@ -464,10 +770,12 @@ u16 Platform_GetKeyInput(void)
 {
 #ifdef _WIN32
     u16 gamepadKeys = GetXInputKeys();
-    return (gamepadKeys != 0) ? gamepadKeys : keys;
+    return gamepadKeys | keyboardKeys;
+#elif defined(__ANDROID__)
+    return keyboardKeys | controllerKeys | controllerAxisKeys;
 #endif
 
-    return keys;
+    return keyboardKeys;
 }
 
 void VDraw(SDL_Texture *texture)
