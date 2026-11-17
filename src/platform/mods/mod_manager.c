@@ -407,7 +407,7 @@ u8 ModManager_GetStarterLevel(u8 slot, u8 vanillaLevel) {
 bool8 gModsEnabled = FALSE;
 char *gActiveModSelector = NULL;
 
-void ModManager_Init(void) {}
+void ModManager_Init(void) { InitRAMShadows(); }
 void ModManager_Shutdown(void) {}
 char *ModManager_ReadFileToString(const char *path) { return NULL; }
 const struct Trainer *ModManager_GetTrainer(u16 trainerId) { return &gTrainers[trainerId]; }
